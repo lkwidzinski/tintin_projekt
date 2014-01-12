@@ -1,0 +1,18 @@
+body {
+  background-color: #eeeeee;
+}
+#entry {
+  background-color: black;
+  color: white;
+  width: 100%;
+}
+#console {
+  position: fixed;
+  bottom: 20px;
+  width: 98%;
+  font-size: 14px;
+}
+.uname {
+  font-weight: bold;
+  color: green;
+}
