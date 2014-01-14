@@ -22,6 +22,7 @@ var players=[];
 var card_deck=[];
 var table_cards=[];
 var round=0;
+var player_nr=[];
 
 
 socket.on('connection', function (client) {
@@ -67,23 +68,40 @@ socket.on('connection', function (client) {
                     j-=1;
                     if(j<1){
                         clearInterval(interval);
+                        for(var s=0;s<players.length;s+=1){
+                            player_nr.push(s);
+                        };
                         pop_deck_shuffle();
-                        rozdaj([0,1,2],2);
+                        rozdaj(player_nr,2);
                         round=1;
-                        players[0].emit("start_game",{cards:players[0].cards,cards_table:table_cards});
-                        players[1].emit("start_game",{cards:players[1].cards,cards_table:table_cards});
-                        players[2].emit("start_game",{cards:players[2].cards,cards_table:table_cards});
+                        var k;
+                        for(k=0;k<players.length;k+=1){
+
+                            players[k].emit("start_game",{cards:players[k].cards,cards_table:table_cards});
+                            
+                        };
                         };
                     },1000);   
             };
     });
 
-    client.on("game_round2", function (){
-        rozdaj([0,1,2],1);
+    client.on("game_round2", function (msg){
         round+=1;
-        players[0].emit("game_round2",{cards:players[0].cards,cards_table:table_cards,round:round});
-        players[1].emit("game_round2",{cards:players[1].cards,cards_table:table_cards,round:round});
-        players[2].emit("game_round2",{cards:players[2].cards,cards_table:table_cards,round:round});
+        rozdaj(player_nr,1);
+        var k;
+            for(k=0;k<players.length;k+=1){
+
+                 players[k].emit("game_round2",{cards:players[k].cards,cards_table:table_cards,round:round});
+                            
+            };
+        if(round===5){
+            var i;
+            for(i=0;i<players.length;i+=1){
+                 check_cards(players[i].cards.concat(table_cards),i);
+                 client.emit("message","Player " + players[i].nazwa_uz + " had a " + players[i].check_result + " of " + players[i].check_result_nr);
+                 client.broadcast.emit("message","Player " + players[i].nazwa_uz + " had a " + players[i].check_result + " of " + players[i].check_result_nr);          
+            };
+        };
 
     });
     client.on('disconnect', function() {
@@ -116,16 +134,143 @@ function shuffleArray(array) {
         var temp = array[i];
         array[i] = array[j];
         array[j] = temp;
-    }
+    };
     return array;
 };
 function rozdaj (players_active,ilosc){
     var i,j;
-    for(i=0;i<ilosc;i+=1){
-        for(j=0;j<players_active.length;j+=1){
-            players[players_active[j]].cards.push(card_deck.pop());
-        };
+    if(round<5){
+        for(i=0;i<ilosc;i+=1){
+           for(j=0;j<players_active.length;j+=1){
+                players[players_active[j]].cards.push(card_deck.pop());
+            };
         table_cards.push(card_deck.pop());
+        };
     };
 
 };
+function check_cards (cards,player){
+
+    cards.sort(function(a,b){return a-b});
+    console.log(cards);
+    if(check_for_poker(cards,player)){
+        return;
+    };
+    if(check_for_four(cards,player)){
+        return;
+    };
+    if(check_for_full(cards,player)){
+        return;
+    };
+    if(check_for_color(cards,player)){
+        return;
+    };
+    if(check_for_three(cards,player)){
+        return;
+    };
+    if(check_for_pair(cards,player)){
+        return;
+    };
+    
+};
+
+function check_for_poker (cards,player){
+    var i;
+    for(i=0;i<6;i+=1){
+        if(cards[i+1]===cards[i]+1&&cards[i+2]===cards[i]+2&&cards[i+3]===cards[i]+3&&cards[i+4]===cards[i]+4){
+            players[player].check_result="POKER";
+            players[player].check_result_nr=cards[i];
+            return true;
+        };
+    };
+    return false;
+};
+
+function check_for_four (cards,player){
+    var i;
+    for(i=0;i<10;i+=1){
+        if(contains(cards,cards[i]+13)&&contains(cards,cards[i]+26)&&contains(cards,cards[i]+39)){
+            players[player].check_result="FOUR";
+            players[player].check_result_nr=cards[i];
+            return true;
+        };
+    };
+    return false;
+};
+
+function check_for_full (cards,player){
+
+    if(check_for_three(cards,player)){
+        var i;
+        for(i=0;i<9;i+=1){
+            if(cards[i]===players[player].check_result_nr||cards[i]===players[player].check_result_nr+13||cards[i]===players[player].check_result_nr+13){
+                    continue;
+            };
+            if(contains(cards,cards[i]+13)||contains(cards,cards[i]+26)||contains(cards,cards[i]+39)){
+                players[player].check_result="FULL";
+                players[player].check_result_nr+=" " + cards[i];
+                return true;
+            };
+    };
+    };
+    return false;
+
+};
+
+function check_for_color (cards,player){
+    var i;
+    var pik=0,karo=0,kier=0,trefl=0;
+    for(i=0;i<10;i+=1){
+        if(cards[i]<14){
+            trefl+=1;
+        };
+        if(cards[i]<27&&cards[i]>13){
+            karo+=1;
+        };
+        if(cards[i]<40&&cards[i]>26){
+            kier+=1;
+        };
+        if(cards[i]>39){
+            pik+=1;
+        };
+    };
+        if(trefl>4||karo>4||kier>4||pik>4){
+            players[player].check_result="COLOR";
+            players[player].check_result_nr="";
+            return true;
+        };
+    return false;
+};
+
+function check_for_three (cards,player){
+    var i;
+     for(i=0;i<10;i+=1){
+        if(contains(cards,cards[i]+13)&&contains(cards,cards[i]+26)||contains(cards,cards[i]+13)&&contains(cards,cards[i]+39)||contains(cards,cards[i]+26)&&contains(cards,cards[i]+39)){
+            players[player].check_result="THREE";
+            players[player].check_result_nr=cards[i];
+            return true;
+        };
+    };
+    return false;
+};
+
+function check_for_pair (cards,player){
+    var i;
+    for(i=0;i<9;i+=1){
+        if(contains(cards,cards[i]+13)||contains(cards,cards[i]+26)||contains(cards,cards[i]+39)){
+            players[player].check_result="PAIR";
+            players[player].check_result_nr=cards[i];
+            return true;
+        };
+    };
+    return false;
+};
+
+function contains(array, obj) {
+    for (var i = 0; i < array.length; i++) {
+        if (array[i] === obj) {
+            return true;
+        }
+    }
+    return false;
+}

@@ -1,7 +1,7 @@
 {
     "name": "myApp",
     "version": "0.0.1",
-    "description": "Prosty czat z Socket.io i Express",
+    "description": "Poker",
     "scripts": {
         "start": "node app.js"
     },
