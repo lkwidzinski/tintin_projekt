@@ -23,6 +23,9 @@ var card_deck=[];
 var table_cards=[];
 var round=0;
 var player_nr=[];
+var modulo_array=[];
+var game_in_progress=0;
+var player_turn=0;
 
 
 socket.on('connection', function (client) {
@@ -41,6 +44,7 @@ socket.on('connection', function (client) {
             players[index].ready = 0;
             players[index].nazwa_uz=msg.user;
             players[index].cards=[];
+            players[index].modulo_array=[];
             client.broadcast.emit("message","Player " + players[index].nazwa_uz + " joined.");
             client.emit("message","You joined.");
             client.broadcast.emit("player_nr","Players:" + players.length);
@@ -48,6 +52,7 @@ socket.on('connection', function (client) {
     });
     client.on("ready",function (msg){
             var i;
+            game_in_progress=1;
             players[index].ready = 1;
             var allReady=true;
             for(i=0;i<players.length;i+=1){
@@ -72,7 +77,8 @@ socket.on('connection', function (client) {
                             player_nr.push(s);
                         };
                         pop_deck_shuffle();
-                        rozdaj(player_nr,2);
+                        rozdaj(player_nr,3);
+                        player_nr=[];
                         round=1;
                         var k;
                         for(k=0;k<players.length;k+=1){
@@ -80,9 +86,22 @@ socket.on('connection', function (client) {
                             players[k].emit("start_game",{cards:players[k].cards,cards_table:table_cards});
                             
                         };
+                        players[player_turn].emit("your_turn",{player:player_turn});
                         };
                     },1000);   
             };
+    });
+
+    client.on("check", function (msg){
+        player_nr.push(msg.player);
+        player_turn+=1;
+        if(player_turn>players.length-1){
+            players[0].emit("next_round",{});
+            player_turn=0;
+            players[player_turn].emit("your_turn",{player:player_turn});
+        }else{
+        players[player_turn].emit("your_turn",{player:player_turn});
+        };
     });
 
     client.on("game_round2", function (msg){
@@ -94,7 +113,7 @@ socket.on('connection', function (client) {
                  players[k].emit("game_round2",{cards:players[k].cards,cards_table:table_cards,round:round});
                             
             };
-        if(round===5){
+        if(round===4){
             var i;
             for(i=0;i<players.length;i+=1){
                  check_cards(players[i].cards.concat(table_cards),i);
@@ -113,15 +132,17 @@ socket.on('connection', function (client) {
                 };
             };
         if(players.length>0){
-        client.broadcast.emit("message","Player " + players[index].nazwa_uz + " left.");
-        players.splice(index,1); 
-        client.broadcast.emit("player_nr","Players:"+players.length);
+            client.broadcast.emit("message","Player " + players[index].nazwa_uz + " left.");
+            players.splice(index,1); 
+            client.broadcast.emit("player_nr","Players:"+players.length);
+            console.log(players);
         };
     });
 });
 
 function pop_deck_shuffle(){
     card_deck=[];
+    table_cards=[];
     var i;
     for (i=1;i<53;i+=1){
         card_deck.push(i);
@@ -139,10 +160,13 @@ function shuffleArray(array) {
 };
 function rozdaj (players_active,ilosc){
     var i,j;
-    if(round<5){
-        for(i=0;i<ilosc;i+=1){
+    if(round<4){
+        for(i=0;i<ilosc;i+=1){                                     
            for(j=0;j<players_active.length;j+=1){
+                if(players[players_active[j]].cards.length<2) {
+
                 players[players_active[j]].cards.push(card_deck.pop());
+                };
             };
         table_cards.push(card_deck.pop());
         };
@@ -151,33 +175,40 @@ function rozdaj (players_active,ilosc){
 };
 function check_cards (cards,player){
 
-    cards.sort(function(a,b){return a-b});
-    console.log(cards);
+    cards.sort(function(a,b){return b-a});
     if(check_for_poker(cards,player)){
         return;
     };
-    if(check_for_four(cards,player)){
+    check_modulo(cards,player);
+    if(check_for_four(players[player].modulo_array,player)){
         return;
     };
-    if(check_for_full(cards,player)){
+    if(check_for_full(players[player].modulo_array,player)){
         return;
     };
     if(check_for_color(cards,player)){
         return;
     };
-    if(check_for_three(cards,player)){
+	if(check_for_straight(players[player].modulo_array,player)){
+		return;
+	};
+    if(check_for_three(players[player].modulo_array,player)){
         return;
     };
-    if(check_for_pair(cards,player)){
+	if(check_for_two_pairs(players[player].modulo_array,player)){
+		return;
+	};
+    if(check_for_pair(players[player].modulo_array,player)){
         return;
     };
-    
+	if(check_for_highest (cards,player)){
+	};
 };
 
 function check_for_poker (cards,player){
     var i;
-    for(i=0;i<6;i+=1){
-        if(cards[i+1]===cards[i]+1&&cards[i+2]===cards[i]+2&&cards[i+3]===cards[i]+3&&cards[i+4]===cards[i]+4){
+    for(i=0;i<cards.length-4;i+=1){
+        if(cards[i+1]===cards[i]-1&&cards[i+2]===cards[i]-2&&cards[i+3]===cards[i]-3&&cards[i+4]===cards[i]-4){
             players[player].check_result="POKER";
             players[player].check_result_nr=cards[i];
             return true;
@@ -188,10 +219,10 @@ function check_for_poker (cards,player){
 
 function check_for_four (cards,player){
     var i;
-    for(i=0;i<10;i+=1){
-        if(contains(cards,cards[i]+13)&&contains(cards,cards[i]+26)&&contains(cards,cards[i]+39)){
+    for(i=cards.length-1;i>=0;i-=1){
+        if(cards[i]===4){
             players[player].check_result="FOUR";
-            players[player].check_result_nr=cards[i];
+            players[player].check_result_nr=i+1;
             return true;
         };
     };
@@ -202,16 +233,13 @@ function check_for_full (cards,player){
 
     if(check_for_three(cards,player)){
         var i;
-        for(i=0;i<9;i+=1){
-            if(cards[i]===players[player].check_result_nr||cards[i]===players[player].check_result_nr+13||cards[i]===players[player].check_result_nr+13){
-                    continue;
-            };
-            if(contains(cards,cards[i]+13)||contains(cards,cards[i]+26)||contains(cards,cards[i]+39)){
+        for(i=cards.length-1;i>=0;i-=1){
+            if(cards[i]==2){
                 players[player].check_result="FULL";
-                players[player].check_result_nr+=" " + cards[i];
+                players[player].check_result_nr+=" " + (i+1);
                 return true;
             };
-    };
+		};
     };
     return false;
 
@@ -220,7 +248,7 @@ function check_for_full (cards,player){
 function check_for_color (cards,player){
     var i;
     var pik=0,karo=0,kier=0,trefl=0;
-    for(i=0;i<10;i+=1){
+    for(i=0;i<cards.length;i+=1){
         if(cards[i]<14){
             trefl+=1;
         };
@@ -242,35 +270,82 @@ function check_for_color (cards,player){
     return false;
 };
 
-function check_for_three (cards,player){
+function check_for_straight (cards,player){
     var i;
-     for(i=0;i<10;i+=1){
-        if(contains(cards,cards[i]+13)&&contains(cards,cards[i]+26)||contains(cards,cards[i]+13)&&contains(cards,cards[i]+39)||contains(cards,cards[i]+26)&&contains(cards,cards[i]+39)){
-            players[player].check_result="THREE";
+    for(i=cards.length;i<=4;i-=1){
+        if(cards[i]>0&&cards[i-1]>0&&cards[i-2]>0&&cards[i-3]>0&&cards[i-4]>0){
+            players[player].check_result="STRAIGHT";
             players[player].check_result_nr=cards[i];
             return true;
         };
     };
     return false;
+};
+
+function check_for_three (cards,player){
+    var i;
+     for(i=cards.length-1;i>=0;i-=1){
+        if(cards[i]===3){
+            players[player].check_result="THREE";
+            players[player].check_result_nr=i+1;
+            return true;
+        };
+    };
+    return false;
+};
+
+function check_for_two_pairs (cards,player){
+        var i,temp=0;
+        players[player].check_result_nr="";
+        for(i=cards.length-1;i>=0;i-=1){
+            if(cards[i]===2){
+                temp+=1;
+                players[player].check_result_nr+=(i+1)+" ";
+                if(temp===2){
+                  players[player].check_result="2 PAIRS";
+                  return true; 
+                };
+            };
+		};
+        
+    return false;
+
 };
 
 function check_for_pair (cards,player){
     var i;
-    for(i=0;i<9;i+=1){
-        if(contains(cards,cards[i]+13)||contains(cards,cards[i]+26)||contains(cards,cards[i]+39)){
+    for(i=cards.length-1;i>=0;i-=1){
+        if(cards[i]===2){
             players[player].check_result="PAIR";
-            players[player].check_result_nr=cards[i];
+            players[player].check_result_nr=i+1;
             return true;
         };
     };
     return false;
 };
 
-function contains(array, obj) {
-    for (var i = 0; i < array.length; i++) {
-        if (array[i] === obj) {
-            return true;
-        }
-    }
-    return false;
-}
+function check_modulo (cards,player){
+    var i,j;
+    for(j=0;j<13;j+=1){
+        players[player].modulo_array.push(0);
+    };
+    for(i=0;i<cards.length;i+=1){
+        if(cards[i]%13===0){
+            players[player].modulo_array[12]+=1;
+        }else{
+            players[player].modulo_array[(cards[i]%13)-1]+=1;
+        }; 
+    };
+    console.log(players[player].modulo_array);
+};
+
+function check_for_highest (cards,player){
+			players[player].check_result="HIGHEST CARD";
+            if(cards[0]%13===0){
+                players[player].check_result_nr=13;
+            }else{
+                players[player].check_result_nr=cards[0]%13;
+            };
+			return true;
+	
+};
