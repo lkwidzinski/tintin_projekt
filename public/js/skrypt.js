@@ -8,13 +8,11 @@ $(document).ready(function () {
 
     var ready_string = "<br/><br/><table><tr><td><p id=\"ready_state\"></td><td><input id=\"ready_button\" type=\"button\" value=\"Ready\"></td></tr></table> ";
 
-    var game_string = "<table><tr id=\"row1\"></tr><tr id=\"row2\"></tr></table><input id=\"check_button\" type=\"button\" value=\"Check\"><input id=\"fold_button\" type=\"button\" value=\"Fold\"><input id=\"raise_text\"><input id=\"raise_button\" type=\"button\" value=\"Raise\">";
-
-    var game_in_progress=0;
+    var game_string = "<table><tr id=\"row1\"></tr><tr id=\"row2\"></tr></table><input id=\"check_button\" type=\"button\" value=\"Check\"><input id=\"fold_button\" type=\"button\" value=\"Fold\">";
 
     var player_turn=0;
 
-    join_button.addEventListener("click",function (event){
+    join_button.addEventListener("click",function (){
             socket = io.connect('http://localhost:3000');
 
             socket.on('message', function (msg) {
@@ -34,7 +32,7 @@ $(document).ready(function () {
             $("#ready_state").html("Not ready");
             
             var ready_button = document.getElementById("ready_button");
-            ready_button.addEventListener("click", function (event){
+            ready_button.addEventListener("click", function (){
                  $("#ready_state").html("Ready");
                  ready_button.disabled=true;
                  socket.emit("ready",{my:'data'});
@@ -49,46 +47,29 @@ $(document).ready(function () {
                 $("#row1").append("<td>"  +  "<img src=\"cards/"+msg.cards_table[2] +".svg\" alt=\"Smiley face\" height=\"150\" width=\"100\"></td>");
                  var check_button = document.getElementById("check_button");
                  var fold_button = document.getElementById("fold_button");
-                 var raise_button = document.getElementById("raise_button");
-                 var raise_text = document.getElementById("raise_text");
-                 check_button.addEventListener("click", function (event){
+                 check_button.addEventListener("click", function (){
                     socket.emit("check",{player:player_turn});
                     check_button.disabled=true;
                     fold_button.disabled=true;
-                    raise_button.disabled=true;
-                    raise_text.disabled=true;
                  });
-                fold_button.addEventListener("click", function (event){
+                fold_button.addEventListener("click", function (){
                     socket.emit("fold",{player:player_turn});
                     check_button.disabled=true;
                     fold_button.disabled=true;
-                    raise_button.disabled=true;
-                    raise_text.disabled=true;
-                 });
-                raise_button.addEventListener("click", function (event){
-                    socket.emit("game_round2",{});
-                    check_button.disabled=true;
-                    fold_button.disabled=true;
-                    raise_button.disabled=true;
-                    raise_text.disabled=true;
                  });
                 check_button.disabled=true;
                 fold_button.disabled=true;
-                raise_button.disabled=true;
-                raise_text.disabled=true;
 
             });
-            socket.on("folded", function (msg){
+            socket.on("folded", function (){
                 socket.emit("fold",{player:player_turn});
             });
-            socket.on("end", function (msg){
+            socket.on("end", function (){
                 $("#check_button").remove();
                 $("#fold_button").remove();
-                $("#raise_button").remove();
-                $("#raise_text").remove();
                 $("#game").append("<input id=\"next_button\" type=\"button\" value=\"Next round\">");
                 var next_button = document.getElementById("next_button");
-                next_button.addEventListener("click", function (event){
+                next_button.addEventListener("click", function (){
                     socket.emit("ready",{my:'data'});
                     next_button.disabled=true;
                 });
@@ -96,15 +77,11 @@ $(document).ready(function () {
             socket.on("your_turn", function (msg){
                  var check_button = document.getElementById("check_button");
                  var fold_button = document.getElementById("fold_button");
-                 var raise_button = document.getElementById("raise_button");
-                 var raise_text = document.getElementById("raise_text");
                  check_button.disabled=false;
                  fold_button.disabled=false;
-                 //raise_button.disabled=false;
-                 //raise_text.disabled=false;
                  player_turn=msg.player;
             });
-            socket.on("next_round", function (msg){
+            socket.on("next_round", function (){
                 socket.emit("game_round2", {});
                 player_turn=0;
             });

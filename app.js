@@ -103,7 +103,12 @@ socket.on('connection', function (client) {
             player_turn=0;
             players[player_turn].emit("your_turn",{player:player_turn});
         }else{
-            for(i=0;i<player_fold.length;i+=1){ if (player_fold[i]===player_turn){client.emit("folded",{});return}};
+            for(i=0;i<player_fold.length;i+=1){ 
+                if (player_fold[i]===player_turn){
+                    client.emit("folded",{});
+                    return;
+                };
+            };
         players[player_turn].emit("your_turn",{player:player_turn});
         };
     });
@@ -117,7 +122,12 @@ socket.on('connection', function (client) {
             player_turn=0;
             players[player_turn].emit("your_turn",{player:player_turn});
         }else{
-            for(i=0;i<player_fold.length;i+=1){ if (player_fold[i]===player_turn){client.emit("folded",{});return}};
+            for(i=0;i<player_fold.length;i+=1){ 
+                if (player_fold[i]===player_turn){
+                    client.emit("folded",{});
+                    return;
+                };
+            };
         players[player_turn].emit("your_turn",{player:player_turn});
         };
     });
@@ -226,31 +236,31 @@ function rozdaj (players_active,ilosc){
 };
 function check_cards (cards,player){
 
-    cards.sort(function(a,b){return b-a});
+    cards.sort(function(a,b){return b-a;});
     if(check_for_poker(cards,player)){
-        return players[player].rank=1;;
+        return players[player].rank=1;
     };
     check_modulo(cards,player);
     if(check_for_four(players[player].modulo_array,player)){
         return players[player].rank=2;
     };
     if(check_for_full(players[player].modulo_array,player)){
-        return players[player].rank=3;;
+        return players[player].rank=3;
     };
     if(check_for_color(cards,player)){
-        return players[player].rank=4;;
+        return players[player].rank=4;
     };
 	if(check_for_straight(players[player].modulo_array,player)){
-		return players[player].rank=5;;
+		return players[player].rank=5;
 	};
     if(check_for_three(players[player].modulo_array,player)){
-        return players[player].rank=6;;
+        return players[player].rank=6;
     };
 	if(check_for_two_pairs(players[player].modulo_array,player)){
-		return players[player].rank=7;;
+		return players[player].rank=7;
 	};
     if(check_for_pair(players[player].modulo_array,player)){
-        return players[player].rank=8;;
+        return players[player].rank=8;
     };
 	if(check_for_highest (cards,player)){
         return players[player].rank=9;
