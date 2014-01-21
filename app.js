@@ -26,6 +26,7 @@ var player_nr=[];
 var modulo_array=[];
 var game_in_progress=0;
 var player_turn=0;
+var player_fold=[];
 
 
 socket.on('connection', function (client) {
@@ -94,33 +95,69 @@ socket.on('connection', function (client) {
 
     client.on("check", function (msg){
         player_nr.push(msg.player);
+        var i;
         player_turn+=1;
         if(player_turn>players.length-1){
             players[0].emit("next_round",{});
             player_turn=0;
             players[player_turn].emit("your_turn",{player:player_turn});
         }else{
+            for(i=0;i<player_fold.length;i+=1){ if (player_fold[i]===player_turn){client.emit("folded",{});return}};
+        players[player_turn].emit("your_turn",{player:player_turn});
+        };
+    });
+
+    client.on("fold", function (msg){
+        player_fold.push(msg.player);
+        var i;
+        player_turn+=1;
+        if(player_turn>players.length-1){
+            players[0].emit("next_round",{});
+            player_turn=0;
+            players[player_turn].emit("your_turn",{player:player_turn});
+        }else{
+            for(i=0;i<player_fold.length;i+=1){ if (player_fold[i]===player_turn){client.emit("folded",{});return}};
         players[player_turn].emit("your_turn",{player:player_turn});
         };
     });
 
     client.on("game_round2", function (msg){
         round+=1;
-        rozdaj(player_nr,1);
         var k;
-            for(k=0;k<players.length;k+=1){
+        if(round<4){
+        rozdaj(player_nr,1);
+            for(k=0;k<player_nr.length;k+=1){
 
-                 players[k].emit("game_round2",{cards:players[k].cards,cards_table:table_cards,round:round});
+                 players[player_nr[k]].emit("game_round2",{cards:players[player_nr[k]].cards,cards_table:table_cards,round:round});
                             
             };
+        };
         if(round===4){
             var i;
-            for(i=0;i<players.length;i+=1){
-                 check_cards(players[i].cards.concat(table_cards),i);
-                 client.emit("message","Player " + players[i].nazwa_uz + " had a " + players[i].check_result + " of " + players[i].check_result_nr);
-                 client.broadcast.emit("message","Player " + players[i].nazwa_uz + " had a " + players[i].check_result + " of " + players[i].check_result_nr);          
+            for(i=0;i<player_nr.length;i+=1){
+                 check_cards(players[player_nr[i]].cards.concat(table_cards),i);
+                 console.log(player_nr.length);
+                 client.emit("message","Player " + players[player_nr[i]].nazwa_uz + " had a " + players[player_nr[i]].check_result + " of " + players[player_nr[i]].check_result_nr);
+                 client.broadcast.emit("message","Player " + players[player_nr[i]].nazwa_uz + " had a " + players[player_nr[i]].check_result + " of " + players[player_nr[i]].check_result_nr);          
             };
+            for(i=0;i<players.length;i+=1){
+                players[i].ready = 0;
+                players[i].cards=[];
+                players[i].modulo_array=[];
+
+            };
+            client.broadcast.emit("end",{});
+            client.emit("end",{});
+            card_deck=[];
+            table_cards=[];
+            round=0;
+            player_nr=[];
+            modulo_array=[];
+            game_in_progress=0;
+            player_turn=0;
+            player_fold=[];
         };
+        player_nr=[];
 
     });
     client.on('disconnect', function() {
@@ -135,7 +172,17 @@ socket.on('connection', function (client) {
             client.broadcast.emit("message","Player " + players[index].nazwa_uz + " left.");
             players.splice(index,1); 
             client.broadcast.emit("player_nr","Players:"+players.length);
-            console.log(players);
+            if(players.length===0){
+                players=[];
+                card_deck=[];
+                table_cards=[];
+                round=0;
+                player_nr=[];
+                modulo_array=[];
+                game_in_progress=0;
+                player_turn=0;
+                player_fold=[];
+            };
         };
     });
 });
@@ -336,16 +383,15 @@ function check_modulo (cards,player){
             players[player].modulo_array[(cards[i]%13)-1]+=1;
         }; 
     };
-    console.log(players[player].modulo_array);
 };
 
 function check_for_highest (cards,player){
 			players[player].check_result="HIGHEST CARD";
-            if(cards[0]%13===0){
-                players[player].check_result_nr=13;
-            }else{
-                players[player].check_result_nr=cards[0]%13;
+            var i;
+            for(i=cards.length-1;i>=0;i-=1){
+                if(cards[i]===1){
+                    players[player].check_result_nr=i+1;
+                    return true;
+                };
             };
-			return true;
-	
 };
