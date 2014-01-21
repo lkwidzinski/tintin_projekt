@@ -43,6 +43,7 @@ socket.on('connection', function (client) {
                 };
             };
             players[index].ready = 0;
+            players[index].punkty = 0;
             players[index].nazwa_uz=msg.user;
             players[index].cards=[];
             players[index].modulo_array=[];
@@ -133,12 +134,13 @@ socket.on('connection', function (client) {
             };
         };
         if(round===4){
-            var i;
+            var i,tab=[];
             for(i=0;i<player_nr.length;i+=1){
                  check_cards(players[player_nr[i]].cards.concat(table_cards),i);
                  console.log(player_nr.length);
                  client.emit("message","Player " + players[player_nr[i]].nazwa_uz + " had a " + players[player_nr[i]].check_result + " of " + players[player_nr[i]].check_result_nr);
                  client.broadcast.emit("message","Player " + players[player_nr[i]].nazwa_uz + " had a " + players[player_nr[i]].check_result + " of " + players[player_nr[i]].check_result_nr);          
+
             };
             for(i=0;i<players.length;i+=1){
                 players[i].ready = 0;
@@ -146,6 +148,8 @@ socket.on('connection', function (client) {
                 players[i].modulo_array=[];
 
             };
+            client.broadcast.emit("message","WINNER = " + players[check_winner()].nazwa_uz);
+            client.emit("message","WINNER = " + players[check_winner()].nazwa_uz);
             client.broadcast.emit("end",{});
             client.emit("end",{});
             card_deck=[];
@@ -224,31 +228,32 @@ function check_cards (cards,player){
 
     cards.sort(function(a,b){return b-a});
     if(check_for_poker(cards,player)){
-        return;
+        return players[player].rank=1;;
     };
     check_modulo(cards,player);
     if(check_for_four(players[player].modulo_array,player)){
-        return;
+        return players[player].rank=2;
     };
     if(check_for_full(players[player].modulo_array,player)){
-        return;
+        return players[player].rank=3;;
     };
     if(check_for_color(cards,player)){
-        return;
+        return players[player].rank=4;;
     };
 	if(check_for_straight(players[player].modulo_array,player)){
-		return;
+		return players[player].rank=5;;
 	};
     if(check_for_three(players[player].modulo_array,player)){
-        return;
+        return players[player].rank=6;;
     };
 	if(check_for_two_pairs(players[player].modulo_array,player)){
-		return;
+		return players[player].rank=7;;
 	};
     if(check_for_pair(players[player].modulo_array,player)){
-        return;
+        return players[player].rank=8;;
     };
 	if(check_for_highest (cards,player)){
+        return players[player].rank=9;
 	};
 };
 
@@ -394,4 +399,15 @@ function check_for_highest (cards,player){
                     return true;
                 };
             };
+};
+
+function check_winner (){
+    var i, winner=0;
+
+    for(i=1;i<players.length;i+=1){
+        if(players[i].rank<players[i-1].rank){
+            winner=i;
+        };
+    };
+    return winner;
 };
